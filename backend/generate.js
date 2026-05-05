@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
-import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Redis } from '@upstash/redis';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 dotenv.config({ path: path.join(__dirname, '.env') });
+
+const redis = new Redis({ url: process.env.REDIS_URL, token: process.env.REDIS_TOKEN });
 
 const systemPrompt = `You are the writer behind Zero-Day Morning, a daily cybersecurity briefing. Your readers are people learning cybersecurity — CTF players, CS students, self-taught hackers, career-switchers. They range from beginner to intermediate. They are smart. Do not talk down to them.
 
@@ -59,7 +60,7 @@ async function generate() {
       model: 'claude-sonnet-4-5',
       max_tokens: 4000,
       system: systemPrompt,
-      messages: [{ role: 'user', content: 'Generate today\'s cybersecurity brief.' }]
+      messages: [{ role: 'user', content: "Generate today's cybersecurity brief." }]
     })
   });
 
@@ -67,13 +68,10 @@ async function generate() {
   const raw = data.content[0].text;
   const clean = raw.replace(/```json|```/g, '').trim();
   const brief = JSON.parse(clean);
-
   brief.generatedAt = new Date().toISOString();
 
-  const outputPath = path.join(__dirname, 'data', 'brief.json');
-  await fs.writeFile(outputPath, JSON.stringify(brief, null, 2));
-
-  console.log(`[${new Date().toISOString()}] Brief saved: "${brief.title}"`);
+  await redis.set('brief:current', JSON.stringify(brief));
+  console.log(`[${new Date().toISOString()}] Brief saved to Redis: "${brief.title}"`);
 }
 
 generate().catch(err => {
