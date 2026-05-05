@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/generate",
+      "schedule": "0 6 * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/frontend/index.html" }
   ]
