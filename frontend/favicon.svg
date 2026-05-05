@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Dark background -->
+  <rect width="32" height="32" fill="#0a0a0a"/>
+  <!-- Terminal bracket left -->
+  <path d="M4 10 L4 22 L8 22" stroke="#e8ff47" stroke-width="2.5" stroke-linecap="square" fill="none"/>
+  <!-- Terminal bracket right -->
+  <path d="M28 10 L28 22 L24 22" stroke="#e8ff47" stroke-width="2.5" stroke-linecap="square" fill="none"/>
+  <!-- Blinking cursor block -->
+  <rect x="13" y="13" width="6" height="8" fill="#e8ff47"/>
+  <!-- Scanline effect -->
+  <rect x="0" y="15" width="32" height="1" fill="#e8ff47" opacity="0.08"/>
+</svg>
