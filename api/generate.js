@@ -56,6 +56,13 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  const lastGenerated = await redis.get('brief:last-generated');
+if (lastGenerated) {
+  const hoursSince = (Date.now() - new Date(lastGenerated).getTime()) / 1000 / 60 / 60;
+  if (hoursSince < 20) {
+    return res.status(429).json({ error: 'Brief already generated recently.' });
+  }
+}
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -93,6 +100,8 @@ entries.unshift({
   subtitle: brief.subtitle
 });
 await redis.set('brief:index', JSON.stringify(entries));
+
+await redis.set('brief:last-generated', new Date().toISOString());
 
 res.json({ ok: true, title: brief.title });
 
