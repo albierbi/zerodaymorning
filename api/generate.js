@@ -78,8 +78,24 @@ export default async function handler(req, res) {
     const brief = JSON.parse(clean);
     brief.generatedAt = new Date().toISOString();
 
-    await redis.set('brief:current', JSON.stringify(brief));
-    res.json({ ok: true, title: brief.title });
+const dateKey = new Date().toISOString().split('T')[0];
+await redis.set('brief:current', JSON.stringify(brief));
+await redis.set(`brief:${dateKey}`, JSON.stringify(brief));
+
+const index = await redis.get('brief:index');
+const entries = index ? JSON.parse(index) : [];
+entries.unshift({
+  date: dateKey,
+  title: brief.title,
+  category: brief.category,
+  difficulty: brief.difficulty,
+  difficultyPercent: brief.difficultyPercent,
+  subtitle: brief.subtitle
+});
+await redis.set('brief:index', JSON.stringify(entries));
+
+res.json({ ok: true, title: brief.title });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Generation failed' });

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archive — Zero-Day Morning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --surface2: #1a1a1a;
+    --border: #242424; --accent: #e8ff47; --accent2: #ff4747;
+    --text: #e8e8e0; --muted: #6a6a60;
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Playfair Display', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.6;
+  }
+
+  .masthead {
+    border-bottom: 1px solid var(--border);
+    padding: 0 clamp(20px, 5vw, 80px);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 20px;
+    min-height: 80px;
+  }
+  .masthead-left a { font-family: var(--mono); font-size: 11px; color: var(--muted); text-decoration: none; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
+  .masthead-left a:hover { color: var(--accent); }
+  .masthead-logo { text-align: center; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); padding: 8px 16px; white-space: nowrap; text-decoration: none; display: block; }
+  .masthead-right { text-align: right; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .page-header {
+    padding: clamp(40px, 6vh, 60px) clamp(20px, 5vw, 80px);
+    border-bottom: 1px solid var(--border);
+  }
+  .page-eyebrow { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 16px; }
+  .page-title { font-family: var(--serif); font-size: clamp(32px, 5vw, 60px); font-weight: 900; line-height: 1; letter-spacing: -0.02em; }
+  .page-title em { font-style: italic; color: var(--accent); }
+  .page-count { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 16px; }
+
+  .filters {
+    padding: 24px clamp(20px, 5vw, 80px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .filter-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-right: 4px; }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.06); }
+  .filter-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+  .archive-grid {
+    padding: clamp(20px, 4vh, 40px) clamp(20px, 5vw, 80px);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .brief-card {
+    background: var(--bg);
+    padding: 28px;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .brief-card:hover { background: var(--surface); }
+  .brief-card.hidden { display: none; }
+
+  .card-date { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 12px; }
+  .card-title { font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1.2; margin-bottom: 10px; color: var(--text); }
+  .card-subtitle { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+  .card-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid;
+  }
+  .tag-cat { border-color: var(--accent); color: var(--accent); }
+  .tag-diff-beginner { border-color: #47ff8a; color: #47ff8a; }
+  .tag-diff-intermediate { border-color: var(--muted); color: var(--muted); }
+  .tag-diff-advanced { border-color: var(--accent2); color: var(--accent2); }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    padding: 80px 20px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .footer { border-top: 1px solid var(--border); padding: 20px clamp(20px, 5vw, 80px); font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-left">
+    <a href="/">← Today's Brief</a>
+  </div>
+  <a href="/" class="masthead-logo">Zero-Day Morning</a>
+  <div class="masthead-right">Archive</div>
+</header>
+
+<div class="page-header">
+  <div class="page-eyebrow">All Issues</div>
+  <h1 class="page-title">The <em>Archive</em></h1>
+  <div class="page-count" id="page-count">Loading...</div>
+</div>
+
+<div class="filters">
+  <span class="filter-label">Difficulty</span>
+  <div class="filter-group">
+    <button class="filter-btn active" data-filter="difficulty" data-value="all" onclick="setFilter('difficulty', 'all', this)">All</button>
+    <button class="filter-btn" data-filter="difficulty" data-value="Beginner" onclick="setFilter('difficulty', 'Beginner', this)">Beginner</button>
+    <button class="filter-btn" data-filter="difficulty" data-value="Intermediate" onclick="setFilter('difficulty', 'Intermediate', this)">Intermediate</button>
+    <button class="filter-btn" data-filter="difficulty" data-value="Advanced" onclick="setFilter('difficulty', 'Advanced', this)">Advanced</button>
+  </div>
+  <div class="filter-divider"></div>
+  <span class="filter-label">Sort</span>
+  <div class="filter-group">
+    <button class="filter-btn active" data-filter="sort" data-value="newest" onclick="setFilter('sort', 'newest', this)">Newest</button>
+    <button class="filter-btn" data-filter="sort" data-value="oldest" onclick="setFilter('sort', 'oldest', this)">Oldest</button>
+  </div>
+  <div class="filter-divider"></div>
+  <span class="filter-label">Search</span>
+  <input id="search-input" type="text" placeholder="keyword..." oninput="applyFilters()"
+    style="background:none;border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 12px;outline:none;width:160px;letter-spacing:0.05em;">
+</div>
+
+<div class="archive-grid" id="archive-grid">
+  <div class="empty-state">Loading archive...</div>
+</div>
+
+<footer class="footer">
+  Zero-Day Morning — Daily Cybersecurity Brief
+</footer>
+
+<script>
+  let allEntries = [];
+  let filters = { difficulty: 'all', sort: 'newest' };
+
+  function setFilter(type, value, btn) {
+    filters[type] = value;
+    document.querySelectorAll(`[data-filter="${type}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    let entries = [...allEntries];
+
+    if (filters.difficulty !== 'all') {
+      entries = entries.filter(e => e.difficulty === filters.difficulty);
+    }
+
+    if (search) {
+      entries = entries.filter(e =>
+        e.title.toLowerCase().includes(search) ||
+        e.category.toLowerCase().includes(search) ||
+        (e.subtitle && e.subtitle.toLowerCase().includes(search))
+      );
+    }
+
+    if (filters.sort === 'oldest') entries.reverse();
+
+    const grid = document.getElementById('archive-grid');
+    if (entries.length === 0) {
+      grid.innerHTML = '<div class="empty-state">No briefs match your filters.</div>';
+      return;
+    }
+
+    grid.innerHTML = entries.map(e => cardHTML(e)).join('');
+    document.getElementById('page-count').textContent =
+      `${entries.length} brief${entries.length !== 1 ? 's' : ''} in the archive`;
+  }
+
+  function cardHTML(e) {
+    const date = new Date(e.date + 'T00:00:00');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dateStr = `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    const diffClass = `tag-diff-${e.difficulty.toLowerCase()}`;
+    return `
+      <a class="brief-card fade-in" href="/?date=${e.date}">
+        <div class="card-date">${dateStr}</div>
+        <div class="card-title">${e.title}</div>
+        <div class="card-subtitle">${e.subtitle || ''}</div>
+        <div class="card-tags">
+          <span class="card-tag tag-cat">${e.category}</span>
+          <span class="card-tag ${diffClass}">${e.difficulty}</span>
+        </div>
+      </a>`;
+  }
+
+  async function loadArchive() {
+    try {
+      const res = await fetch('/api/archive');
+      allEntries = await res.json();
+      document.getElementById('page-count').textContent =
+        `${allEntries.length} brief${allEntries.length !== 1 ? 's' : ''} in the archive`;
+      applyFilters();
+    } catch (err) {
+      document.getElementById('archive-grid').innerHTML =
+        '<div class="empty-state">Failed to load archive.</div>';
+    }
+  }
+
+  loadArchive();
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

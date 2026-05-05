@@ -365,7 +365,9 @@
     <span id="live-date"></span>
   </div>
   <div class="masthead-logo">Zero-Day Morning</div>
-  <div class="masthead-right">Daily Cybersecurity Brief</div>
+<div class="masthead-right">
+    <a href="/archive.html" style="font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:none;letter-spacing:0.05em;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Archive →</a>
+  </div>
 </header>
 
 <div class="hero">
@@ -490,9 +492,27 @@
         </div>
       </div>`;
   }
+async function loadBriefByDate(date) {
+    try {
+      const res = await fetch(`/api/brief-by-date?date=${date}`);
+      if (!res.ok) throw new Error('not found');
+      const brief = await res.json();
+      document.querySelector('.hero-eyebrow').textContent = `Brief from ${date}`;
+      renderBrief(brief);
+    } catch (err) {
+      document.getElementById('main-title').innerHTML = 'Brief not <em>found.</em>';
+      document.getElementById('content-area').innerHTML = `
+        <div class="error-state">No brief found for ${date}. <a href="/" style="color:var(--accent)">Go to today's brief →</a></div>`;
+    }
+  }
 
-  setDate();
-  loadBrief();
+setDate();
+  const urlDate = new URLSearchParams(window.location.search).get('date');
+  if (urlDate) {
+    loadBriefByDate(urlDate);
+  } else {
+    loadBrief();
+  }
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
 </body>
