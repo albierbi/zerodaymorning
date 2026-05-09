@@ -51,18 +51,20 @@ export default async function handler(req, res) {
   }
 
   const secret = req.headers['x-secret'];
-  const isCron = req.headers['x-vercel-cron'] === '1';
+  const isCron = req.headers['x-vercel-cron'];
   if (!isCron && secret !== process.env.GENERATE_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const lastGenerated = await redis.get('brief:last-generated');
-if (lastGenerated) {
-  const hoursSince = (Date.now() - new Date(lastGenerated).getTime()) / 1000 / 60 / 60;
-  if (hoursSince < 20) {
-    return res.status(429).json({ error: 'Brief already generated recently.' });
+  if (!isCron) {
+    const lastGenerated = await redis.get('brief:last-generated');
+    if (lastGenerated) {
+      const hoursSince = (Date.now() - new Date(lastGenerated).getTime()) / 1000 / 60 / 60;
+      if (hoursSince < 20) {
+        return res.status(429).json({ error: 'Brief already generated recently.' });
+      }
+    }
   }
-}
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
