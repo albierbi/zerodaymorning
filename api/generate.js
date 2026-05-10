@@ -46,25 +46,30 @@ Respond ONLY with a valid JSON object. No markdown, no preamble, no backticks. T
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  if (req.method !== 'POST') {
+  // Allow both GET (cron) and POST (manual)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const secret = req.headers['x-secret'];
-  const isCron = req.headers['x-vercel-cron'];
-  if (!isCron && secret !== process.env.GENERATE_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
+  // Auth: cron skips auth, manual needs secret
+  const isCron = req.method === 'GET';
   if (!isCron) {
-    const lastGenerated = await redis.get('brief:last-generated');
-    if (lastGenerated) {
-      const hoursSince = (Date.now() - new Date(lastGenerated).getTime()) / 1000 / 60 / 60;
-      if (hoursSince < 20) {
-        return res.status(429).json({ error: 'Brief already generated recently.' });
-      }
+    const secret = req.headers['x-secret'];
+    if (secret !== process.env.GENERATE_SECRET) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
   }
+
+  // Rate limit: max one generation per 20 hours
+  const lastGenerated = await redis.get('brief:last-generated');
+  if (lastGenerated) {
+    const ts = typeof lastGenerated === 'string' ? lastGenerated : String(lastGenerated);
+    const hoursSince = (Date.now() - new Date(ts).getTime()) / 1000 / 60 / 60;
+    if (hoursSince < 20) {
+      return res.status(429).json({ error: 'Brief already generated recently.' });
+    }
+  }
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -87,26 +92,33 @@ export default async function handler(req, res) {
     const brief = JSON.parse(clean);
     brief.generatedAt = new Date().toISOString();
 
-const dateKey = new Date().toISOString().split('T')[0];
-await redis.set('brief:current', JSON.stringify(brief));
-await redis.set(`brief:${dateKey}`, JSON.stringify(brief));
+    const dateKey = new Date().toISOString().split('T')[0];
 
-const index = await redis.get('brief:index');
-const entries = index ? JSON.parse(index) : [];
-entries.unshift({
-  date: dateKey,
-  title: brief.title,
-  category: brief.category,
-  difficulty: brief.difficulty,
-  difficultyPercent: brief.difficultyPercent,
-  subtitle: brief.subtitle
-});
-await redis.set('brief:index', JSON.stringify(entries));
+    // Save brief
+    await redis.set('brief:current', JSON.stringify(brief));
+    await redis.set(`brief:${dateKey}`, JSON.stringify(brief));
+    await redis.set('brief:last-generated', new Date().toISOString());
 
-await redis.set('brief:last-generated', new Date().toISOString());
+    // Save to archive index
+    try {
+      const index = await redis.get('brief:index');
+      const entries = index
+        ? (typeof index === 'string' ? JSON.parse(index) : index)
+        : [];
+      entries.unshift({
+        date: dateKey,
+        title: brief.title,
+        category: brief.category,
+        difficulty: brief.difficulty,
+        difficultyPercent: brief.difficultyPercent,
+        subtitle: brief.subtitle
+      });
+      await redis.set('brief:index', JSON.stringify(entries));
+    } catch (indexErr) {
+      console.error('Failed to update archive index:', indexErr);
+    }
 
-res.json({ ok: true, title: brief.title });
-
+    res.json({ ok: true, title: brief.title });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Generation failed' });
